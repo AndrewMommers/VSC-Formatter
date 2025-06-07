@@ -25,6 +25,7 @@ function formatDocument(document: vscode.TextDocument): vscode.TextEdit[] {
     for (let rawLine of lines) {
         let line = rawLine.trim();
 
+        // Skip multiple empty lines
         if (line === '') {
             if (!lastWasEmpty) {
                 formattedLines.push('');
@@ -35,36 +36,50 @@ function formatDocument(document: vscode.TextDocument): vscode.TextEdit[] {
 
         lastWasEmpty = false;
 
-        // Decrease indent BEFORE writing line if starts with '}'
+        // Decrease indent for closing brace
         if (line.startsWith('}')) {
             indentLevel = Math.max(0, indentLevel - 1);
         }
 
-        // Normalize `=` spacing
+        // Normalize spacing around =
         line = line.replace(/\s*=\s*/g, ' = ');
 
-        // Move `{` inline with class/function if needed
-        line = line.replace(/\s*\{\s*$/, ' {');
+        // Remove extra spacing inside [] and {}
+        line = line.replace(/\[\s*/g, '[').replace(/\s*\]/g, ']');
+        line = line.replace(/\{\s*/g, '{').replace(/\s*\}/g, '}');
 
-        let indent = INDENT.repeat(indentLevel);
+        // Normalize semicolon spacing
+        line = line.replace(/\s*;\s*/g, ';');
 
-        // Align comments (//)
+        // Align comments
         if (line.includes('//')) {
             const [codePart, commentPart] = line.split('//');
             const trimmedCode = codePart.trimEnd();
-            const targetPadding = Math.max(1, COMMENT_ALIGN_COLUMN - indent.length - trimmedCode.length);
+            const targetPadding = Math.max(1, COMMENT_ALIGN_COLUMN - INDENT.length * indentLevel - trimmedCode.length);
             const padding = ' '.repeat(targetPadding);
             line = `${trimmedCode}${padding}// ${commentPart.trim()}`;
         }
 
-        formattedLines.push(indent + line);
+        // Add indentation
+        formattedLines.push(INDENT.repeat(indentLevel) + line);
 
-        // Increase indent AFTER writing line if ends with '{'
-        if (line.endsWith('{')) {
+        // Increase indent for lines ending in an opening brace `{` (but not inline arrays)
+        if (line.endsWith('{') && !line.includes('[] = {')) {
             indentLevel++;
+        }
+
+        // Increase indent after array starts
+        if (line.endsWith('[] = {') || line.endsWith('= {')) {
+            indentLevel++;
+        }
+
+        // Decrease indent after array block end
+        if (line === '};' || line === '},') {
+            indentLevel = Math.max(0, indentLevel - 1);
         }
     }
 
+    // Apply edits only if needed
     for (let i = 0; i < document.lineCount; i++) {
         const currentLine = document.lineAt(i);
         const newText = formattedLines[i] || '';
@@ -94,4 +109,4 @@ export function activate(context: vscode.ExtensionContext) {
     }
 }
 
-export function deactivate() { }
+export function deactivate() {}
