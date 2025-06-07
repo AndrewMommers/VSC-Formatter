@@ -10,5 +10,8 @@
     },
     "[cpp]": {
         "editor.defaultFormatter": "MommersCo.MCO-CodeFormatter"
+    },
+    "[go]": {
+        "editor.formatOnSave": false
     }
 }
