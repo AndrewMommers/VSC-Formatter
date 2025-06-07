@@ -1,90 +1,118 @@
 import * as vscode from 'vscode';
 
-const SUPPORTED_LANGUAGES = [
-    'javascript',
-    'typescript',
-    'json',
-    'python',
-    'sqf',
-    'cfg',
-    'cpp',
-    'go',
-];
+const SUPPORTED_LANGUAGES = ['cpp', 'hpp', 'sqf', 'cfg'];
 
 function formatDocument(document: vscode.TextDocument): vscode.TextEdit[] {
     const edits: vscode.TextEdit[] = [];
     const lines = document.getText().split(/\r?\n/);
-
     const formattedLines: string[] = [];
-    let indentLevel = 0;
-    let lastWasEmpty = false;
 
     const INDENT = '    '; // 4 spaces
-    const COMMENT_ALIGN_COLUMN = 60;
+    let indentLevel = 0;
+    let insideArray = false;
+    let arrayBuffer: string[] = [];
 
-    for (let rawLine of lines) {
-        let line = rawLine.trim();
+    const assignRegex = /^\s*(\w+)\s*=\s*(.+?);?$/;
+    const arrayElementRegex = /^\s*"([^"]+)"\s*,\s*"([^"]*)"\s*(\/\/.*)?$/;
 
-        // Skip multiple empty lines
-        if (line === '') {
-            if (!lastWasEmpty) {
-                formattedLines.push('');
-                lastWasEmpty = true;
+    const flushArrayBuffer = () => {
+        if (arrayBuffer.length === 0) return;
+
+        const parsed = arrayBuffer.map(line => {
+            const match = line.match(arrayElementRegex);
+            if (!match) return { k: '', v: '', comment: '', raw: line };
+
+            const [, k, v, comment] = match;
+            return { k, v, comment: comment?.trim() ?? '', raw: line };
+        });
+
+        const maxKey = Math.max(...parsed.map(e => e.k.length));
+        const maxVal = Math.max(...parsed.map(e => e.v.length));
+
+        parsed.forEach(({ k, v, comment, raw }) => {
+            if (!k) {
+                formattedLines.push(INDENT.repeat(indentLevel) + raw.trim());
+                return;
             }
+            const padKey = ' '.repeat(maxKey - k.length + 2);
+            const padVal = ' '.repeat(maxVal - v.length + 2);
+            const line = `${INDENT.repeat(indentLevel)}"${k}",${padKey}"${v}"${padVal}${comment}`;
+            formattedLines.push(line.trimEnd());
+        });
+
+        arrayBuffer.length = 0;
+    };
+
+    for (let raw of lines) {
+        let line = raw.trim();
+
+        // Handle scope end first
+        if (/^};?$/.test(line)) {
+            flushArrayBuffer();
+            indentLevel = Math.max(indentLevel - 1, 0);
+            formattedLines.push(INDENT.repeat(indentLevel) + line);
             continue;
         }
 
-        lastWasEmpty = false;
-
-        // Decrease indent for closing brace
-        if (line.startsWith('}')) {
-            indentLevel = Math.max(0, indentLevel - 1);
+        // Opening brace
+        if (/^{\s*$/.test(line)) {
+            formattedLines.push(INDENT.repeat(indentLevel) + '{');
+            indentLevel++;
+            continue;
         }
 
-        // Normalize spacing around =
-        line = line.replace(/\s*=\s*/g, ' = ');
-
-        // Remove extra spacing inside [] and {}
-        line = line.replace(/\[\s*/g, '[').replace(/\s*\]/g, ']');
-        line = line.replace(/\{\s*/g, '{').replace(/\s*\}/g, '}');
-
-        // Normalize semicolon spacing
-        line = line.replace(/\s*;\s*/g, ';');
-
-        // Align comments
-        if (line.includes('//')) {
-            const [codePart, commentPart] = line.split('//');
-            const trimmedCode = codePart.trimEnd();
-            const targetPadding = Math.max(1, COMMENT_ALIGN_COLUMN - INDENT.length * indentLevel - trimmedCode.length);
-            const padding = ' '.repeat(targetPadding);
-            line = `${trimmedCode}${padding}// ${commentPart.trim()}`;
+        // Assignment (outside arrays)
+        const assignMatch = line.match(assignRegex);
+        if (assignMatch && !insideArray) {
+            const [_, key, value] = assignMatch;
+            const pad = ' '.repeat(20 - key.length);
+            formattedLines.push(`${INDENT.repeat(indentLevel)}${key}${pad}= ${value.replace(/;$/, '')};`);
+            continue;
         }
 
-        // Add indentation
+        // Array start
+        if (/.*\[\]\s*=\s*{/.test(line)) {
+            insideArray = true;
+            formattedLines.push(INDENT.repeat(indentLevel) + line.replace(/\s+/g, ' '));
+            continue;
+        }
+
+        // Array end
+        if (insideArray && /^};$/.test(line)) {
+            flushArrayBuffer();
+            formattedLines.push(INDENT.repeat(indentLevel) + '};');
+            insideArray = false;
+            continue;
+        }
+
+        if (insideArray) {
+            arrayBuffer.push(line);
+            continue;
+        }
+
+        // Class opening
+        if (/^class\s+\w+.*\{\s*$/.test(line)) {
+            formattedLines.push(INDENT.repeat(indentLevel) + line);
+            indentLevel++;
+            continue;
+        }
+
+        // Class closing with semicolon
+        if (/^\};$/.test(line)) {
+            indentLevel = Math.max(indentLevel - 1, 0);
+            formattedLines.push(INDENT.repeat(indentLevel) + line);
+            continue;
+        }
+
+        // Pass-through fallback
         formattedLines.push(INDENT.repeat(indentLevel) + line);
-
-        // Increase indent for lines ending in an opening brace `{` (but not inline arrays)
-        if (line.endsWith('{') && !line.includes('[] = {')) {
-            indentLevel++;
-        }
-
-        // Increase indent after array starts
-        if (line.endsWith('[] = {') || line.endsWith('= {')) {
-            indentLevel++;
-        }
-
-        // Decrease indent after array block end
-        if (line === '};' || line === '},') {
-            indentLevel = Math.max(0, indentLevel - 1);
-        }
     }
 
-    // Apply edits only if needed
     for (let i = 0; i < document.lineCount; i++) {
-        const currentLine = document.lineAt(i);
-        const newText = formattedLines[i] || '';
-        if (currentLine.text !== newText) {
-            edits.push(vscode.TextEdit.replace(currentLine.range, newText));
+        const originalLine = document.lineAt(i).text;
+        const newLine = formattedLines[i] || '';
+        if (originalLine !== newLine) {
+            edits.push(vscode.TextEdit.replace(document.lineAt(i).range, newLine));
         }
     }
 
@@ -94,18 +122,17 @@ function formatDocument(document: vscode.TextDocument): vscode.TextEdit[] {
 function registerFormatter(languageId: string, context: vscode.ExtensionContext) {
     const provider = vscode.languages.registerDocumentFormattingEditProvider(languageId, {
         provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-            console.log(`📝 Formatting: ${document.fileName} [${document.languageId}]`);
+            console.log(`🧹 Formatting: ${document.fileName}`);
             return formatDocument(document);
         }
     });
-
     context.subscriptions.push(provider);
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('✅ MCO-CodeFormatter is now active!');
-    for (const language of SUPPORTED_LANGUAGES) {
-        registerFormatter(language, context);
+    console.log('🟢 MCO Code Formatter Active');
+    for (const lang of SUPPORTED_LANGUAGES) {
+        registerFormatter(lang, context);
     }
 }
 
