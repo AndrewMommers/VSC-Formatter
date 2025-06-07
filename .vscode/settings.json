@@ -1,0 +1,14 @@
+{
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "editor.formatOnSave": true,
+    "[sqf]": {
+        "editor.defaultFormatter": "MommersCo.MCO-CodeFormatter"
+    },
+    "[cfg]": {
+        "editor.defaultFormatter": "MommersCo.MCO-CodeFormatter"
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "MommersCo.MCO-CodeFormatter"
+    }
+}

@@ -1,0 +1,134 @@
+{
+  "name": "MCO-CodeFormatter",
+  "displayName": "CodeFormatter",
+  "description": "Custom Code Formatter for any programming language",
+  "version": "0.0.1",
+  "publisher": "MommersCo",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:sqf",
+    "onLanguage:json",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python",
+    "onLanguage:cfg",
+    "onLanguage:cpp"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "sqf",
+        "aliases": [
+          "SQF"
+        ],
+        "extensions": [
+          ".sqf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "cfg",
+        "aliases": [
+          "CFG"
+        ],
+        "extensions": [
+          ".cfg"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "cpp",
+        "aliases": [
+          "C++"
+        ],
+        "extensions": [
+          ".cpp",
+          ".hpp"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "python",
+        "aliases": [
+          "Python"
+        ],
+        "extensions": [
+          ".py"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "javascript",
+        "aliases": [
+          "JavaScript"
+        ],
+        "extensions": [
+          ".js"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "typescript",
+        "aliases": [
+          "TypeScript"
+        ],
+        "extensions": [
+          ".ts"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "json",
+        "aliases": [
+          "JSON"
+        ],
+        "extensions": [
+          ".json"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {},
+    "grammars": [],
+    "keybindings": [],
+    "commands": [],
+    "menus": []
+  },
+  "scripts": {
+    "build": "npm run compile",
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "prettier": "^3.5.3"
+  }
+}

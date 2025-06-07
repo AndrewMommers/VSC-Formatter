@@ -1,0 +1,50 @@
+{
+  "comments": {
+    "lineComment": "//",
+    "blockComment": ["/*", "*/"]
+  },
+
+  "brackets": [
+    ["{", "}"],
+    ["[", "]"],
+    ["(", ")"]
+  ],
+
+  "autoClosingPairs": [
+    { "open": "{", "close": "}", "notIn": ["string", "comment"] },
+    { "open": "[", "close": "]", "notIn": ["string", "comment"] },
+    { "open": "(", "close": ")", "notIn": ["string", "comment"] },
+    { "open": "\"", "close": "\"", "notIn": ["string", "comment"] },
+    { "open": "'", "close": "'", "notIn": ["string", "comment"] },
+    { "open": "/*", "close": "*/", "notIn": ["string"] }
+  ],
+
+  "surroundingPairs": [
+    { "open": "{", "close": "}" },
+    { "open": "[", "close": "]" },
+    { "open": "(", "close": ")" },
+    { "open": "\"", "close": "\"" },
+    { "open": "'", "close": "'" }
+  ],
+
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(class|namespace|if|else|for|while|switch|try|catch|finally|do|\\{|\\[|\\().*$",
+    "decreaseIndentPattern": "^\\s*(\\}|\\]|\\)).*$"
+  },
+
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*(?:class|namespace|if|else|for|while|switch|case|default|try|catch|finally|do).*\\{\\s*$",
+      "afterText": "^\\s*\\}$",
+      "action": {
+        "indentAction": "IndentOutdent"
+      }
+    },
+    {
+      "beforeText": "^.*\\{[^}\"']*$",
+      "action": {
+        "indentAction": "Indent"
+      }
+    }
+  ]
+}
